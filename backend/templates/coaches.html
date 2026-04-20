@@ -6,9 +6,29 @@
 {% if personalized_by_location %}
 <aside class="location-personalization">
     <strong>Sorted near you.</strong>
-    <span>Using your saved location. Pick a city or sort option to override it.</span>
+    <span>Using your saved location and the distance spread across {{ distance_stats.city_count }} coach cities.</span>
     <a href="{{ url_for('location_settings') }}">Manage location</a>
 </aside>
+{% if distance_stats %}
+<dl class="distance-stats" aria-label="Coach distance summary">
+    <div>
+        <dt>Closest</dt>
+        <dd>{{ "%.0f"|format(distance_stats.closest_km) }} km</dd>
+    </div>
+    <div>
+        <dt>Nearby cutoff</dt>
+        <dd>{{ "%.0f"|format(distance_stats.nearby_cutoff_km) }} km</dd>
+    </div>
+    <div>
+        <dt>Median city</dt>
+        <dd>{{ "%.0f"|format(distance_stats.median_km) }} km</dd>
+    </div>
+    <div>
+        <dt>Average city</dt>
+        <dd>{{ "%.0f"|format(distance_stats.average_km) }} km</dd>
+    </div>
+</dl>
+{% endif %}
 {% elif not saved_location %}
 <aside class="location-personalization">
     <strong>Want nearby coaches first?</strong>

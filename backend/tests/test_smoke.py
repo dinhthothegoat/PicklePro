@@ -144,6 +144,8 @@ async def test_coaches_auto_personalize_from_saved_location(transport):
 
     assert r.status_code == 200
     assert "Sorted near you." in r.text
+    assert "Nearby cutoff" in r.text
+    assert "Median city" in r.text
     assert "km away" in r.text
     assert "Sarah Johnson" in r.text
     assert "Michael Lee" in r.text

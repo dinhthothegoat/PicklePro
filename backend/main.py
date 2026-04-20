@@ -33,6 +33,7 @@ try:
         COACHES_PER_PAGE,
         COACH_TIER_REQUIREMENTS,
         coaches,
+        distance_stats_for_coaches,
         find_coach_by_name,
         find_coach_by_slug,
         personalize_coaches_by_location,
@@ -83,6 +84,7 @@ except ImportError:
         COACHES_PER_PAGE,
         COACH_TIER_REQUIREMENTS,
         coaches,
+        distance_stats_for_coaches,
         find_coach_by_name,
         find_coach_by_slug,
         personalize_coaches_by_location,
@@ -1716,7 +1718,8 @@ async def list_coaches(request: Request):
             c for c in filtered_coaches
             if specialty_param.lower() in {s.lower() for s in c.get("specialties", [])}
         ]
-    personalized_by_location = bool(saved_location and not location_param and not sort_param)
+    distance_stats = distance_stats_for_coaches(filtered_coaches, saved_location)
+    personalized_by_location = bool(distance_stats and not location_param and not sort_param)
     if personalized_by_location:
         filtered_coaches = personalize_coaches_by_location(filtered_coaches, saved_location)
     elif sort_param == "rating":
@@ -1755,6 +1758,7 @@ async def list_coaches(request: Request):
             "selected_sort": sort_param or "",
             "saved_location": saved_location,
             "personalized_by_location": personalized_by_location,
+            "distance_stats": distance_stats,
             "page": page,
             "total_pages": total_pages,
             "total_coaches": total_coaches,

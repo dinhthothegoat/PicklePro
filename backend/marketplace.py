@@ -90,7 +90,6 @@ TIER_CLASS_BY_NAME = {
 }
 
 COACHES_PER_PAGE = 24
-LOCAL_RADIUS_KM = 250
 
 LOCATION_COORDINATES = {
     "Gold Coast": (-28.0167, 153.4000),
@@ -225,19 +224,75 @@ def coach_distance_km(coach: dict, user_location: dict | None):
     )
 
 
+def percentile(sorted_values: list[float], fraction: float) -> float:
+    if not sorted_values:
+        return 0.0
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+    index = (len(sorted_values) - 1) * fraction
+    lower = math.floor(index)
+    upper = math.ceil(index)
+    if lower == upper:
+        return sorted_values[int(index)]
+    return sorted_values[lower] + (sorted_values[upper] - sorted_values[lower]) * (index - lower)
+
+
+def distance_stats_for_coaches(coach_list: list[dict], user_location: dict | None):
+    if not user_location:
+        return None
+    city_distances = {}
+    for coach in coach_list:
+        location = coach.get("location", "")
+        if location in city_distances:
+            continue
+        distance = coach_distance_km(coach, user_location)
+        if distance is not None:
+            city_distances[location] = distance
+    distances = sorted(city_distances.values())
+    if not distances:
+        return None
+    q1 = percentile(distances, 0.25)
+    median = percentile(distances, 0.5)
+    q3 = percentile(distances, 0.75)
+    average = sum(distances) / len(distances)
+    return {
+        "city_count": len(distances),
+        "closest_km": round(distances[0], 1),
+        "nearby_cutoff_km": round(q1, 1),
+        "median_km": round(median, 1),
+        "average_km": round(average, 1),
+        "far_cutoff_km": round(q3, 1),
+        "farthest_km": round(distances[-1], 1),
+    }
+
+
+def distance_band(distance_km, distance_stats) -> int:
+    if distance_km is None or not distance_stats:
+        return 3
+    if distance_km <= distance_stats["nearby_cutoff_km"]:
+        return 0
+    if distance_km <= distance_stats["median_km"]:
+        return 1
+    if distance_km <= distance_stats["far_cutoff_km"]:
+        return 2
+    return 3
+
+
 def personalize_coaches_by_location(coach_list: list[dict], user_location: dict | None) -> list[dict]:
+    distance_stats = distance_stats_for_coaches(coach_list, user_location)
     personalized = []
     for coach in coach_list:
         enriched = dict(coach)
         distance = coach_distance_km(coach, user_location)
         if distance is not None:
             enriched["distance_km"] = round(distance, 1)
+            enriched["distance_band"] = distance_band(enriched["distance_km"], distance_stats)
         personalized.append(enriched)
     sorted_coaches = sorted(
         personalized,
         key=lambda coach: (
             coach.get("distance_km") is None,
-            coach.get("distance_km", 1_000_000) > LOCAL_RADIUS_KM,
+            coach.get("distance_band", 3),
             coach.get("source") == "generated",
             coach.get("distance_km", 1_000_000),
             -coach.get("rating", 0),
@@ -246,7 +301,7 @@ def personalize_coaches_by_location(coach_list: list[dict], user_location: dict 
     )
     local_coaches = [
         coach for coach in sorted_coaches
-        if coach.get("distance_km") is not None and coach["distance_km"] <= LOCAL_RADIUS_KM
+        if coach.get("distance_band") == 0
     ]
     wider_coaches = [coach for coach in sorted_coaches if coach not in local_coaches]
     if len(local_coaches) >= 3:

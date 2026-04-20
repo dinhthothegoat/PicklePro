@@ -378,6 +378,33 @@ button,
     font-weight: bold;
 }
 
+.distance-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 20px;
+}
+
+.distance-stats div {
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #dfe5d8;
+    border-radius: 8px;
+}
+
+.distance-stats dt {
+    color: #66756d;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.distance-stats dd {
+    margin: 4px 0 0;
+    color: #1f7a4d;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
 .filter-form label {
     flex: 1;
 }
