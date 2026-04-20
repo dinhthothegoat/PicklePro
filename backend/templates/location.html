@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="location-panel">
+    <p class="eyebrow">Location sharing</p>
+    <h2>Use your location for nearby coaching.</h2>
+    <p>Share your device location only when you choose. PickleCoach stores your latest coordinates for your account, and you can clear them at any time.</p>
+
+    <div class="location-status" id="location-status" aria-live="polite">
+        {% if location %}
+        <strong>Location saved.</strong>
+        <span>Updated {{ location.updated_at }}. Accuracy: {{ "%.0f"|format(location.accuracy or 0) }} metres.</span>
+        {% else %}
+        <strong>No location saved.</strong>
+        <span>Start sharing to help tune local coach recommendations.</span>
+        {% endif %}
+    </div>
+
+    <div class="location-actions">
+        <button type="button" id="start-location">Start sharing</button>
+        <button type="button" id="stop-location" class="secondary-button">Stop live updates</button>
+        <button type="button" id="clear-location" class="secondary-button">Clear saved location</button>
+    </div>
+
+    <dl class="location-details">
+        <dt>Latitude</dt>
+        <dd id="location-latitude">{{ "%.6f"|format(location.latitude) if location else "Not shared" }}</dd>
+        <dt>Longitude</dt>
+        <dd id="location-longitude">{{ "%.6f"|format(location.longitude) if location else "Not shared" }}</dd>
+        <dt>Accuracy</dt>
+        <dd id="location-accuracy">{{ "%.0f metres"|format(location.accuracy or 0) if location else "Not shared" }}</dd>
+    </dl>
+</section>
+
+<script id="location-config" type="application/json">
+{{ location_config|tojson }}
+</script>
+<script>
+const locationConfig = JSON.parse(document.getElementById("location-config").textContent);
+const csrfToken = locationConfig.csrfToken;
+let locationWatcher = null;
+
+const statusBox = document.getElementById("location-status");
+const latitudeField = document.getElementById("location-latitude");
+const longitudeField = document.getElementById("location-longitude");
+const accuracyField = document.getElementById("location-accuracy");
+const startButton = document.getElementById("start-location");
+const stopButton = document.getElementById("stop-location");
+const clearButton = document.getElementById("clear-location");
+
+function setStatus(title, detail) {
+    statusBox.replaceChildren();
+    const titleNode = document.createElement("strong");
+    const detailNode = document.createElement("span");
+    titleNode.textContent = title;
+    detailNode.textContent = detail;
+    statusBox.append(titleNode, detailNode);
+}
+
+function renderLocation(location) {
+    if (!location) {
+        latitudeField.textContent = "Not shared";
+        longitudeField.textContent = "Not shared";
+        accuracyField.textContent = "Not shared";
+        return;
+    }
+    latitudeField.textContent = Number(location.latitude).toFixed(6);
+    longitudeField.textContent = Number(location.longitude).toFixed(6);
+    accuracyField.textContent = `${Math.round(location.accuracy || 0)} metres`;
+}
+
+async function savePosition(position) {
+    const response = await fetch(locationConfig.updateUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+        }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || "Could not save location.");
+    }
+    renderLocation(data.location);
+    setStatus("Location saved.", `Updated now. Accuracy: ${Math.round(data.location.accuracy || 0)} metres.`);
+}
+
+function handleLocationError(error) {
+    const message = error && error.message ? error.message : "Your browser did not share a location.";
+    setStatus("Location was not shared.", message);
+}
+
+startButton.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+        setStatus("Location is unavailable.", "This browser does not support device location.");
+        return;
+    }
+    setStatus("Waiting for permission.", "Your browser may ask before sharing your location.");
+    if (locationWatcher !== null) {
+        navigator.geolocation.clearWatch(locationWatcher);
+    }
+    locationWatcher = navigator.geolocation.watchPosition(
+        (position) => savePosition(position).catch((error) => setStatus("Location was not saved.", error.message)),
+        handleLocationError,
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 },
+    );
+});
+
+stopButton.addEventListener("click", () => {
+    if (locationWatcher !== null) {
+        navigator.geolocation.clearWatch(locationWatcher);
+        locationWatcher = null;
+    }
+    setStatus("Live updates stopped.", "Your last saved location remains available until you clear it.");
+});
+
+clearButton.addEventListener("click", async () => {
+    if (locationWatcher !== null) {
+        navigator.geolocation.clearWatch(locationWatcher);
+        locationWatcher = null;
+    }
+    const response = await fetch(locationConfig.clearUrl, {
+        method: "DELETE",
+        headers: { "X-CSRF-Token": csrfToken },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        setStatus("Location was not cleared.", data.error || "Please reload and try again.");
+        return;
+    }
+    renderLocation(null);
+    setStatus("Location cleared.", "PickleCoach no longer has a saved location for your account.");
+});
+</script>
+{% endblock %}

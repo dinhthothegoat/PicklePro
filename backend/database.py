@@ -114,11 +114,26 @@ def init_db() -> None:
                 )
                 """
             )
+            db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_locations (
+                    user_id TEXT PRIMARY KEY,
+                    latitude REAL NOT NULL,
+                    longitude REAL NOT NULL,
+                    accuracy REAL,
+                    source TEXT NOT NULL DEFAULT 'browser',
+                    consented_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+                """
+            )
             db.execute("CREATE INDEX IF NOT EXISTS idx_analysis_timestamp ON analysis_records(timestamp)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_booking_timestamp ON bookings(timestamp)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_booking_status ON bookings(status)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_analysis_jobs_status ON analysis_jobs(status)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_user_locations_updated ON user_locations(updated_at)")
             db.commit()
 
         _INITIALIZED = True
@@ -138,7 +153,7 @@ def _read_legacy_json(filename: str):
         return []
 
 
-_ALLOWED_TABLES = {"analysis_records", "bookings", "analysis_jobs", "users"}
+_ALLOWED_TABLES = {"analysis_records", "bookings", "analysis_jobs", "users", "user_locations"}
 _ALLOWED_COLUMN_TYPES = {"TEXT", "INTEGER", "REAL", "BLOB"}
 
 
@@ -252,6 +267,78 @@ def _user_from_row(row):
         "password_hash": row["password_hash"],
         "created_at": row["created_at"],
         "last_login_at": row["last_login_at"],
+    }
+
+
+def upsert_user_location(
+    user_id: str,
+    latitude: float,
+    longitude: float,
+    accuracy: float | None = None,
+    source: str = "browser",
+) -> dict[str, Any]:
+    init_db()
+    now = datetime.now().isoformat()
+    with session() as db:
+        existing = db.execute(
+            "SELECT consented_at FROM user_locations WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        consented_at = existing["consented_at"] if existing else now
+        db.execute(
+            """
+            INSERT INTO user_locations (
+                user_id, latitude, longitude, accuracy, source, consented_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                latitude = excluded.latitude,
+                longitude = excluded.longitude,
+                accuracy = excluded.accuracy,
+                source = excluded.source,
+                updated_at = excluded.updated_at
+            """,
+            (user_id, latitude, longitude, accuracy, source, consented_at, now),
+        )
+        db.commit()
+    location = get_user_location(user_id)
+    if location is None:
+        raise RuntimeError("Location was not saved.")
+    return location
+
+
+def get_user_location(user_id: str):
+    init_db()
+    with session() as db:
+        row = db.execute(
+            """
+            SELECT user_id, latitude, longitude, accuracy, source, consented_at, updated_at
+            FROM user_locations
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+    return _location_from_row(row)
+
+
+def delete_user_location(user_id: str) -> None:
+    init_db()
+    with session() as db:
+        db.execute("DELETE FROM user_locations WHERE user_id = ?", (user_id,))
+        db.commit()
+
+
+def _location_from_row(row):
+    if row is None:
+        return None
+    return {
+        "user_id": row["user_id"],
+        "latitude": row["latitude"],
+        "longitude": row["longitude"],
+        "accuracy": row["accuracy"],
+        "source": row["source"],
+        "consented_at": row["consented_at"],
+        "updated_at": row["updated_at"],
     }
 
 

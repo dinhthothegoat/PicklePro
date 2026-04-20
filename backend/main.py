@@ -1,5 +1,5 @@
 from fastapi import BackgroundTasks, FastAPI, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from datetime import date, datetime
@@ -239,6 +239,7 @@ def build_home_personalization(user: dict | None):
         if booking.get("status", "pending") == "pending"
     ]
     latest_analysis = analyses[0] if analyses else None
+    saved_location = database.get_user_location(user["id"])
     latest_focus = []
     if latest_analysis:
         latest_focus = latest_analysis.get("report", {}).get("ml", {}).get("focus_areas", [])[:2]
@@ -270,6 +271,7 @@ def build_home_personalization(user: dict | None):
             latest_analysis.get("details", {}).get("location", "")
             if latest_analysis else ""
         ),
+        "saved_location": saved_location,
     }
 
 
@@ -472,6 +474,25 @@ def validate_auth_fields(name: str, email: str, password: str, role: str):
     if role not in {"player", "coach"}:
         return "Please choose a valid account type."
     return None
+
+
+def validate_location_payload(latitude, longitude, accuracy):
+    try:
+        lat = float(latitude)
+        lon = float(longitude)
+    except (TypeError, ValueError):
+        return None, None, None, "Location coordinates were not valid."
+    if not -90 <= lat <= 90:
+        return None, None, None, "Latitude must be between -90 and 90."
+    if not -180 <= lon <= 180:
+        return None, None, None, "Longitude must be between -180 and 180."
+    try:
+        acc = float(accuracy) if accuracy is not None else None
+    except (TypeError, ValueError):
+        return None, None, None, "Location accuracy was not valid."
+    if acc is not None and (acc < 0 or acc > 100000):
+        return None, None, None, "Location accuracy was outside the accepted range."
+    return lat, lon, acc, None
 
 
 def extract_youtube_id(url: str):
@@ -1314,6 +1335,86 @@ async def logout():
     response = RedirectResponse(url="/", status_code=303)
     clear_session_cookie(response)
     return response
+
+
+@app.get("/location", response_class=HTMLResponse)
+async def location_settings(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return bookings_forbidden_response(request)
+    csrf_token = generate_csrf_token()
+    response = templates.TemplateResponse(
+        "location.html",
+        {
+            "request": request,
+            "location": database.get_user_location(user["id"]),
+            "location_config": {
+                "csrfToken": csrf_token,
+                "updateUrl": str(request.url_for("update_my_location")),
+                "clearUrl": str(request.url_for("clear_my_location")),
+            },
+            "csrf_token": csrf_token,
+            "year": datetime.now().year,
+        },
+    )
+    set_csrf_cookie(response, csrf_token)
+    return response
+
+
+@app.get("/api/location")
+async def get_my_location(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"error": "Sign in to manage location sharing."}, status_code=401)
+    return {"location": database.get_user_location(user["id"])}
+
+
+@app.post("/api/location")
+async def update_my_location(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"error": "Sign in to manage location sharing."}, status_code=401)
+    if not validate_csrf_token(
+        request.cookies.get(CSRF_COOKIE, ""),
+        request.headers.get("x-csrf-token", ""),
+    ):
+        return JSONResponse({"error": "Invalid or expired form token. Please reload and try again."}, status_code=403)
+
+    try:
+        payload = await request.json()
+    except ValueError:
+        return JSONResponse({"error": "Location request body was not valid JSON."}, status_code=400)
+
+    latitude, longitude, accuracy, error = validate_location_payload(
+        payload.get("latitude"),
+        payload.get("longitude"),
+        payload.get("accuracy"),
+    )
+    if error:
+        return JSONResponse({"error": error}, status_code=422)
+
+    location = database.upsert_user_location(
+        user["id"],
+        latitude,
+        longitude,
+        accuracy,
+        "browser",
+    )
+    return {"location": location}
+
+
+@app.delete("/api/location")
+async def clear_my_location(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"error": "Sign in to manage location sharing."}, status_code=401)
+    if not validate_csrf_token(
+        request.cookies.get(CSRF_COOKIE, ""),
+        request.headers.get("x-csrf-token", ""),
+    ):
+        return JSONResponse({"error": "Invalid or expired form token. Please reload and try again."}, status_code=403)
+    database.delete_user_location(user["id"])
+    return {"location": None}
 
 
 @app.get("/upload", response_class=HTMLResponse)

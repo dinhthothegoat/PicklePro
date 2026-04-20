@@ -1188,6 +1188,58 @@ td {
     width: 100%;
 }
 
+/* Location */
+.location-panel {
+    max-width: 760px;
+    padding: 24px;
+    background: #fff;
+    border: 1px solid #dfe5d8;
+    border-radius: 8px;
+}
+
+.location-panel h2 {
+    margin: 6px 0 12px;
+    font-size: 2rem;
+}
+
+.location-status {
+    display: grid;
+    gap: 4px;
+    margin: 20px 0;
+    padding: 16px;
+    background: #f6f8f2;
+    border: 1px solid #dfe5d8;
+    border-radius: 8px;
+}
+
+.location-status span {
+    color: #66756d;
+}
+
+.location-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.location-details {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 10px 18px;
+    margin: 0;
+}
+
+.location-details dt {
+    font-weight: 700;
+    color: #4a6355;
+}
+
+.location-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
 /* History */
 .history-list {
     display: grid;

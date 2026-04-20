@@ -56,6 +56,17 @@
         <h3>{{ personalization.primary_label }}</h3>
         <p>{{ personalization.next_step }}</p>
     </article>
+    <article>
+        <p class="eyebrow">Local coaching</p>
+        {% if personalization.saved_location %}
+        <h3>Location is on</h3>
+        <p>Nearby coach matching can use your latest shared location.</p>
+        {% else %}
+        <h3>Add your location</h3>
+        <p>Share your court area when you want sharper local recommendations.</p>
+        {% endif %}
+        <a class="button-link small" href="{{ url_for('location_settings') }}">Manage location</a>
+    </article>
 </section>
 
 <section class="personal-lists">

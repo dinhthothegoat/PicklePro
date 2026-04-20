@@ -10,6 +10,7 @@
             <a href="{{ url_for('view_history') }}">History</a>
             <a href="{{ url_for('view_stats') }}">Stats</a>
             <a href="{{ url_for('view_bookings') }}">Bookings</a>
+            <a href="{{ url_for('location_settings') }}">Location</a>
             {% if user %}
             <span class="nav-user">{{ user.name }} &middot; {{ user.role|title }}</span>
             <form class="nav-logout" action="{{ url_for('logout') }}" method="post">

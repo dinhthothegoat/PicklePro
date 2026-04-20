@@ -87,3 +87,33 @@ def test_analysis_job_lifecycle_in_sqlite(monkeypatch):
     finally:
         if db_path.exists():
             os.remove(db_path)
+
+
+def test_user_location_lifecycle_in_sqlite(monkeypatch):
+    db_path = use_temp_database(monkeypatch)
+
+    try:
+        user = database.create_user({
+            "id": "location-user",
+            "email": "location@example.com",
+            "name": "Location Player",
+            "role": "player",
+            "password_hash": "hash",
+            "created_at": "2026-04-20T10:00:00",
+        })
+
+        saved = database.upsert_user_location(user["id"], -33.8688, 151.2093, 18.5)
+        assert saved["latitude"] == -33.8688
+        assert saved["longitude"] == 151.2093
+        assert saved["accuracy"] == 18.5
+        assert saved["consented_at"]
+
+        updated = database.upsert_user_location(user["id"], -33.8700, 151.2100, 12.0)
+        assert updated["latitude"] == -33.8700
+        assert updated["consented_at"] == saved["consented_at"]
+
+        database.delete_user_location(user["id"])
+        assert database.get_user_location(user["id"]) is None
+    finally:
+        if db_path.exists():
+            os.remove(db_path)

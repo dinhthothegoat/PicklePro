@@ -1,5 +1,6 @@
 """Smoke tests — verify core pages return 200 and contain expected content."""
 from datetime import date, timedelta
+import json
 from pathlib import Path
 import re
 import uuid
@@ -413,7 +414,6 @@ async def test_signed_in_home_and_forms_are_personalized(transport):
         signup_page = await client.get("/signup")
         match = re.search(r'name="csrf_token" value="([^"]+)"', signup_page.text)
         csrf = match.group(1) if match else ""
-        client.cookies.set("csrf_token", signup_page.cookies.get("csrf_token", ""))
         await client.post(
             "/signup",
             data={
@@ -434,6 +434,86 @@ async def test_signed_in_home_and_forms_are_personalized(transport):
     assert "Your activity" in home.text
     assert f'value="{unique_email}"' in upload.text
     assert 'value="Personal Player"' in book.text
+
+
+@pytest.mark.asyncio
+async def test_location_tracking_requires_login_and_saves_user_location(transport):
+    unique_email = f"location-{uuid.uuid4().hex}@example.com"
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        anonymous = await client.get("/location")
+        assert anonymous.status_code == 403
+
+        signup_page = await client.get("/signup")
+        match = re.search(r'name="csrf_token" value="([^"]+)"', signup_page.text)
+        csrf = match.group(1) if match else ""
+        await client.post(
+            "/signup",
+            data={
+                "name": "Location Player",
+                "email": unique_email,
+                "password": "strong-password",
+                "role": "player",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+
+        page = await client.get("/location")
+        assert page.status_code == 200
+        assert "Location sharing" in page.text
+        match = re.search(r'<script id="location-config" type="application/json">\s*(.*?)\s*</script>', page.text, re.S)
+        location_csrf = json.loads(match.group(1))["csrfToken"] if match else ""
+
+        saved = await client.post(
+            "/api/location",
+            headers={"X-CSRF-Token": location_csrf},
+            json={"latitude": -33.8688, "longitude": 151.2093, "accuracy": 20},
+        )
+        assert saved.status_code == 200
+        assert saved.json()["location"]["latitude"] == -33.8688
+
+        current = await client.get("/api/location")
+        assert current.status_code == 200
+        assert current.json()["location"]["longitude"] == 151.2093
+
+        cleared = await client.delete(
+            "/api/location",
+            headers={"X-CSRF-Token": location_csrf},
+        )
+        assert cleared.status_code == 200
+        assert cleared.json()["location"] is None
+
+
+@pytest.mark.asyncio
+async def test_location_api_validates_coordinates(transport):
+    unique_email = f"bad-location-{uuid.uuid4().hex}@example.com"
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        signup_page = await client.get("/signup")
+        match = re.search(r'name="csrf_token" value="([^"]+)"', signup_page.text)
+        csrf = match.group(1) if match else ""
+        await client.post(
+            "/signup",
+            data={
+                "name": "Bad Location Player",
+                "email": unique_email,
+                "password": "strong-password",
+                "role": "player",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+
+        page = await client.get("/location")
+        match = re.search(r'<script id="location-config" type="application/json">\s*(.*?)\s*</script>', page.text, re.S)
+        location_csrf = json.loads(match.group(1))["csrfToken"] if match else ""
+        response = await client.post(
+            "/api/location",
+            headers={"X-CSRF-Token": location_csrf},
+            json={"latitude": 120, "longitude": 151.2093, "accuracy": 20},
+        )
+
+    assert response.status_code == 422
+    assert "Latitude" in response.json()["error"]
 
 
 @pytest.mark.asyncio
