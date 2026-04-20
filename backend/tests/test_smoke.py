@@ -671,6 +671,74 @@ async def test_history_and_bookings_are_scoped_to_signed_in_user(transport, monk
 
 
 @pytest.mark.asyncio
+async def test_history_shows_regression_and_clustering_tables(transport, monkeypatch):
+    player_email = f"models-{uuid.uuid4().hex}@example.com"
+
+    def record(filename, tempo, consistency, pressure, cluster):
+        return {
+            "timestamp": f"2026-04-19T10:0{int(tempo * 10)}:00",
+            "details": {
+                "filename": filename,
+                "name": "Model Player",
+                "email": player_email,
+                "location": "Gold Coast",
+                "skill_level": "Intermediate",
+                "match_type": "Singles",
+            },
+            "report": {
+                "rallies": 10,
+                "winners": 3,
+                "unforced_errors": 2,
+                "ml": {
+                    "features": {
+                        "tempo_score": tempo,
+                        "consistency_score": consistency,
+                        "pressure_score": pressure,
+                    },
+                    "play_style": {"label": cluster, "confidence": 0.82},
+                    "skill_prediction": {"label": "Intermediate", "confidence": 0.74},
+                },
+            },
+        }
+
+    monkeypatch.setattr(
+        main,
+        "load_json_records",
+        lambda filename: [
+            record("match-one.mp4", 0.42, 0.64, 0.35, "Control Builder"),
+            record("match-two.mp4", 0.55, 0.69, 0.46, "Balanced Rallyer"),
+            record("match-three.mp4", 0.66, 0.72, 0.58, "Balanced Rallyer"),
+        ] if filename == "data.json" else [],
+    )
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        signup_page = await client.get("/signup")
+        match = re.search(r'name="csrf_token" value="([^"]+)"', signup_page.text)
+        csrf = match.group(1) if match else ""
+        await client.post(
+            "/signup",
+            data={
+                "name": "Model Player",
+                "email": player_email,
+                "password": "strong-password",
+                "role": "player",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+
+        history = await client.get("/history")
+
+    assert history.status_code == 200
+    assert "Regression Trends" in history.text
+    assert "Clustering Summary" in history.text
+    assert "Figure Table" in history.text
+    assert "pts/match" in history.text
+    assert "Balanced Rallyer" in history.text
+    assert "match-three.mp4" in history.text
+
+
+@pytest.mark.asyncio
 async def test_coach_login_can_access_password_protected_bookings(transport, monkeypatch):
     monkeypatch.setattr(main, "BOOKINGS_PASSWORD", "secret")
     unique_email = f"coach-{uuid.uuid4().hex}@example.com"

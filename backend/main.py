@@ -326,6 +326,102 @@ def can_manage_booking(request: Request, booking: dict | None, provided_key: str
     )
 
 
+def linear_slope(values: list[float]) -> float:
+    if len(values) < 2:
+        return 0.0
+    x_values = list(range(1, len(values) + 1))
+    x_mean = sum(x_values) / len(x_values)
+    y_mean = sum(values) / len(values)
+    numerator = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_values, values))
+    denominator = sum((x - x_mean) ** 2 for x in x_values)
+    return numerator / denominator if denominator else 0.0
+
+
+def trend_label(slope: float) -> str:
+    if slope >= 0.02:
+        return "Rising"
+    if slope <= -0.02:
+        return "Falling"
+    return "Stable"
+
+
+def build_history_model_tables(records: list[dict]) -> dict:
+    model_records = []
+    for index, record in enumerate(records, start=1):
+        report = record.get("report", {})
+        ml = report.get("ml", {})
+        features = ml.get("features", {})
+        if not features:
+            continue
+        model_records.append({
+            "index": index,
+            "timestamp": record.get("timestamp", ""),
+            "filename": record.get("details", {}).get("filename") or f"Match {index}",
+            "tempo_score": float(features.get("tempo_score", 0.0)),
+            "consistency_score": float(features.get("consistency_score", 0.0)),
+            "pressure_score": float(features.get("pressure_score", 0.0)),
+            "cluster": ml.get("play_style", {}).get("label", "Unknown"),
+            "cluster_confidence": float(ml.get("play_style", {}).get("confidence", 0.0)),
+            "skill": ml.get("skill_prediction", {}).get("label", "Unknown"),
+        })
+
+    if not model_records:
+        return {"has_model_data": False, "regression_rows": [], "cluster_rows": [], "figure_rows": []}
+
+    metric_labels = {
+        "tempo_score": "Tempo",
+        "consistency_score": "Consistency",
+        "pressure_score": "Pressure",
+    }
+    regression_rows = []
+    for key, label in metric_labels.items():
+        values = [row[key] for row in model_records]
+        slope = linear_slope(values)
+        regression_rows.append({
+            "metric": label,
+            "first": round(values[0], 2),
+            "latest": round(values[-1], 2),
+            "average": round(sum(values) / len(values), 2),
+            "slope": round(slope, 3),
+            "trend": trend_label(slope),
+        })
+
+    clusters = {}
+    for row in model_records:
+        cluster = clusters.setdefault(row["cluster"], {"label": row["cluster"], "count": 0, "confidence_total": 0.0})
+        cluster["count"] += 1
+        cluster["confidence_total"] += row["cluster_confidence"]
+
+    cluster_rows = []
+    for cluster in clusters.values():
+        count = cluster["count"]
+        cluster_rows.append({
+            "label": cluster["label"],
+            "count": count,
+            "share": round(count / len(model_records), 2),
+            "average_confidence": round(cluster["confidence_total"] / count, 2),
+        })
+    cluster_rows = sorted(cluster_rows, key=lambda row: (-row["count"], row["label"]))
+
+    figure_rows = [
+        {
+            **row,
+            "tempo_pct": round(row["tempo_score"] * 100),
+            "consistency_pct": round(row["consistency_score"] * 100),
+            "pressure_pct": round(row["pressure_score"] * 100),
+        }
+        for row in model_records
+    ]
+
+    return {
+        "has_model_data": True,
+        "sample_size": len(model_records),
+        "regression_rows": regression_rows,
+        "cluster_rows": cluster_rows,
+        "figure_rows": figure_rows,
+    }
+
+
 def upload_error_response(request: Request, message: str, status_code: int):
     csrf_token = generate_csrf_token()
     response = templates.TemplateResponse(
@@ -2155,7 +2251,9 @@ async def view_history(request: Request):
     except ValueError:
         page = 1
     per_page = 50
-    all_records = list(reversed(user_analysis_records(user, load_json_records("data.json"))))
+    scoped_records = user_analysis_records(user, load_json_records("data.json"))
+    model_tables = build_history_model_tables(scoped_records)
+    all_records = list(reversed(scoped_records))
     total_records = len(all_records)
     total_pages = max(1, math.ceil(total_records / per_page))
     page = min(page, total_pages)
@@ -2168,6 +2266,7 @@ async def view_history(request: Request):
         {
             "request": request,
             "records": records,
+            "model_tables": model_tables,
             "page": page,
             "total_pages": total_pages,
             "total_records": total_records,

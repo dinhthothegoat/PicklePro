@@ -1297,6 +1297,48 @@ td {
 }
 
 /* History */
+.history-model-panel {
+    margin-bottom: 24px;
+    padding: 22px;
+    background: #fff;
+    border: 1px solid #dfe5d8;
+    border-radius: 8px;
+}
+
+.history-model-panel h3 {
+    margin-top: 18px;
+}
+
+.history-model-panel h3:first-of-type {
+    margin-top: 0;
+}
+
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.figure-table td {
+    min-width: 132px;
+}
+
+.score-bar {
+    display: inline-block;
+    width: 64px;
+    height: 8px;
+    margin-right: 8px;
+    background: #e5eadf;
+    border-radius: 6px;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.score-bar span {
+    display: block;
+    height: 100%;
+    background: #1f7a4d;
+}
+
 .history-list {
     display: grid;
     gap: 14px;
