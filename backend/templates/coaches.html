@@ -3,6 +3,19 @@
 {% block content %}
 <h2>Find a Coach</h2>
 <p>Choose a coach and start a pending session request. No payment or account needed yet.</p>
+{% if personalized_by_location %}
+<aside class="location-personalization">
+    <strong>Sorted near you.</strong>
+    <span>Using your saved location. Pick a city or sort option to override it.</span>
+    <a href="{{ url_for('location_settings') }}">Manage location</a>
+</aside>
+{% elif not saved_location %}
+<aside class="location-personalization">
+    <strong>Want nearby coaches first?</strong>
+    <span>Share your location once and coach results will personalize automatically.</span>
+    <a href="{{ url_for('location_settings') }}">Set location</a>
+</aside>
+{% endif %}
 
 <!-- Filter form -->
 <form method="get" action="{{ url_for('list_coaches') }}" class="filter-form">
@@ -58,7 +71,12 @@
             {% if coach.badge %}
             <p class="coach-badge {{ coach.tier_class }}">{{ coach.badge }}</p>
             {% endif %}
-            <p>{{ coach.location }}, {{ coach.country }}</p>
+            <p>
+                {{ coach.location }}, {{ coach.country }}
+                {% if coach.distance_km is defined %}
+                <span class="distance-pill">{{ "%.0f"|format(coach.distance_km) }} km away</span>
+                {% endif %}
+            </p>
             <p>{{ coach.bio }}</p>
             <ul class="card-tags">
             {% for specialty in coach.specialties %}

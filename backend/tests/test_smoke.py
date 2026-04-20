@@ -120,6 +120,64 @@ async def test_coaches_filter_country(transport):
 
 
 @pytest.mark.asyncio
+async def test_coaches_auto_personalize_from_saved_location(transport):
+    unique_email = f"coach-nearby-{uuid.uuid4().hex}@example.com"
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        signup_page = await client.get("/signup")
+        match = re.search(r'name="csrf_token" value="([^"]+)"', signup_page.text)
+        csrf = match.group(1) if match else ""
+        await client.post(
+            "/signup",
+            data={
+                "name": "Nearby Player",
+                "email": unique_email,
+                "password": "strong-password",
+                "role": "player",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        user = main.database.get_user_by_email(unique_email)
+        main.database.upsert_user_location(user["id"], -28.0167, 153.4000, 15)
+
+        r = await client.get("/coaches")
+
+    assert r.status_code == 200
+    assert "Sorted near you." in r.text
+    assert "km away" in r.text
+    assert "Sarah Johnson" in r.text
+    assert "0 km away" in r.text
+
+
+@pytest.mark.asyncio
+async def test_explicit_coach_sort_overrides_location_personalization(transport):
+    unique_email = f"coach-sort-{uuid.uuid4().hex}@example.com"
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        signup_page = await client.get("/signup")
+        match = re.search(r'name="csrf_token" value="([^"]+)"', signup_page.text)
+        csrf = match.group(1) if match else ""
+        await client.post(
+            "/signup",
+            data={
+                "name": "Sorting Player",
+                "email": unique_email,
+                "password": "strong-password",
+                "role": "player",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        user = main.database.get_user_by_email(unique_email)
+        main.database.upsert_user_location(user["id"], -28.0167, 153.4000, 15)
+
+        r = await client.get("/coaches?sort=rating")
+
+    assert r.status_code == 200
+    assert "Sorted near you." not in r.text
+    assert r.text.index("Emma Wilson") < r.text.index("Sarah Johnson")
+
+
+@pytest.mark.asyncio
 async def test_coach_profile_found(transport):
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         r = await client.get("/coaches/sarah-johnson")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 
 try:
     from .config import COACHES_PATH
@@ -90,6 +91,25 @@ TIER_CLASS_BY_NAME = {
 
 COACHES_PER_PAGE = 24
 
+LOCATION_COORDINATES = {
+    "Gold Coast": (-28.0167, 153.4000),
+    "Brisbane": (-27.4698, 153.0251),
+    "Sunshine Coast": (-26.6500, 153.0667),
+    "Sydney": (-33.8688, 151.2093),
+    "Melbourne": (-37.8136, 144.9631),
+    "Perth": (-31.9523, 115.8613),
+    "Adelaide": (-34.9285, 138.6007),
+    "Canberra": (-35.2809, 149.1300),
+    "Ho Chi Minh City": (10.8231, 106.6297),
+    "Hanoi": (21.0278, 105.8342),
+    "Da Nang": (16.0544, 108.2022),
+    "Nha Trang": (12.2388, 109.1967),
+    "Can Tho": (10.0452, 105.7469),
+    "Hue": (16.4637, 107.5909),
+    "Hoi An": (15.8801, 108.3380),
+    "Vung Tau": (10.4114, 107.1362),
+}
+
 AUSTRALIA_LOCATIONS = [
     "Gold Coast",
     "Brisbane",
@@ -174,6 +194,53 @@ LAST_NAMES = [
 def slugify(value: str):
     """Create a simple URL slug."""
     return value.lower().replace(" ", "-")
+
+
+def haversine_km(origin: tuple[float, float], destination: tuple[float, float]) -> float:
+    """Calculate distance between two latitude/longitude pairs."""
+    lat1, lon1 = origin
+    lat2, lon2 = destination
+    radius_km = 6371.0
+    d_lat = math.radians(lat2 - lat1)
+    d_lon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(d_lat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(d_lon / 2) ** 2
+    )
+    return radius_km * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def coach_distance_km(coach: dict, user_location: dict | None):
+    if not user_location:
+        return None
+    coach_coordinates = LOCATION_COORDINATES.get(coach.get("location", ""))
+    if not coach_coordinates:
+        return None
+    return haversine_km(
+        (float(user_location["latitude"]), float(user_location["longitude"])),
+        coach_coordinates,
+    )
+
+
+def personalize_coaches_by_location(coach_list: list[dict], user_location: dict | None) -> list[dict]:
+    personalized = []
+    for coach in coach_list:
+        enriched = dict(coach)
+        distance = coach_distance_km(coach, user_location)
+        if distance is not None:
+            enriched["distance_km"] = round(distance, 1)
+        personalized.append(enriched)
+    return sorted(
+        personalized,
+        key=lambda coach: (
+            coach.get("distance_km") is None,
+            coach.get("distance_km", 1_000_000),
+            -coach.get("rating", 0),
+            coach.get("price", 0),
+        ),
+    )
 
 
 def build_generated_coach(index: int):

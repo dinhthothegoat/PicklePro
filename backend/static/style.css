@@ -349,6 +349,35 @@ button,
     border-radius: 8px;
 }
 
+.location-personalization {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 16px 0 20px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid #dfe5d8;
+    border-left: 4px solid #1f7a4d;
+    border-radius: 8px;
+}
+
+.location-personalization span {
+    color: #66756d;
+}
+
+.distance-pill {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 7px;
+    background: #eef6e8;
+    border: 1px solid #c2dab0;
+    border-radius: 8px;
+    color: #1f7a4d;
+    font-size: 0.82rem;
+    font-weight: bold;
+}
+
 .filter-form label {
     flex: 1;
 }

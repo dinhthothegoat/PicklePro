@@ -35,6 +35,7 @@ try:
         coaches,
         find_coach_by_name,
         find_coach_by_slug,
+        personalize_coaches_by_location,
     )
     from .match_intelligence import build_ml_report, clamp
     from .shot_detection import WholeMatchShotTracker
@@ -84,6 +85,7 @@ except ImportError:
         coaches,
         find_coach_by_name,
         find_coach_by_slug,
+        personalize_coaches_by_location,
     )
     from match_intelligence import build_ml_report, clamp
     from shot_detection import WholeMatchShotTracker
@@ -1679,6 +1681,8 @@ async def analyze_youtube_video(
 @app.get("/coaches", response_class=HTMLResponse)
 async def list_coaches(request: Request):
     """Render a list of available coaches with optional filtering."""
+    user = get_current_user(request)
+    saved_location = database.get_user_location(user["id"]) if user else None
     country_param = request.query_params.get("country")
     location_param = request.query_params.get("location")
     specialty_param = request.query_params.get("specialty")
@@ -1712,7 +1716,10 @@ async def list_coaches(request: Request):
             c for c in filtered_coaches
             if specialty_param.lower() in {s.lower() for s in c.get("specialties", [])}
         ]
-    if sort_param == "rating":
+    personalized_by_location = bool(saved_location and not location_param and not sort_param)
+    if personalized_by_location:
+        filtered_coaches = personalize_coaches_by_location(filtered_coaches, saved_location)
+    elif sort_param == "rating":
         filtered_coaches = sorted(filtered_coaches, key=lambda c: c.get("rating", 0), reverse=True)
     elif sort_param == "price":
         filtered_coaches = sorted(filtered_coaches, key=lambda c: c.get("price", 0))
@@ -1746,6 +1753,8 @@ async def list_coaches(request: Request):
             "selected_location": location_param or "",
             "selected_specialty": specialty_param or "",
             "selected_sort": sort_param or "",
+            "saved_location": saved_location,
+            "personalized_by_location": personalized_by_location,
             "page": page,
             "total_pages": total_pages,
             "total_coaches": total_coaches,
