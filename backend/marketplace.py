@@ -90,6 +90,7 @@ TIER_CLASS_BY_NAME = {
 }
 
 COACHES_PER_PAGE = 24
+LOCAL_RADIUS_KM = 250
 
 LOCATION_COORDINATES = {
     "Gold Coast": (-28.0167, 153.4000),
@@ -232,15 +233,25 @@ def personalize_coaches_by_location(coach_list: list[dict], user_location: dict 
         if distance is not None:
             enriched["distance_km"] = round(distance, 1)
         personalized.append(enriched)
-    return sorted(
+    sorted_coaches = sorted(
         personalized,
         key=lambda coach: (
             coach.get("distance_km") is None,
+            coach.get("distance_km", 1_000_000) > LOCAL_RADIUS_KM,
+            coach.get("source") == "generated",
             coach.get("distance_km", 1_000_000),
             -coach.get("rating", 0),
             coach.get("price", 0),
         ),
     )
+    local_coaches = [
+        coach for coach in sorted_coaches
+        if coach.get("distance_km") is not None and coach["distance_km"] <= LOCAL_RADIUS_KM
+    ]
+    wider_coaches = [coach for coach in sorted_coaches if coach not in local_coaches]
+    if len(local_coaches) >= 3:
+        return local_coaches + wider_coaches
+    return sorted_coaches
 
 
 def build_generated_coach(index: int):
@@ -278,13 +289,14 @@ def build_generated_coach(index: int):
 
 def expand_fake_coaches(seed_coaches, target_count=200):
     """Expand seed coaches to a larger deterministic fake marketplace."""
-    expanded = list(seed_coaches)
+    expanded = [{**coach, "source": "catalogue"} for coach in seed_coaches]
     seen_slugs = {coach.get("slug") for coach in expanded}
 
     index = 1
     while len(expanded) < target_count:
         coach = build_generated_coach(index)
         if coach["slug"] not in seen_slugs:
+            coach["source"] = "generated"
             expanded.append(coach)
             seen_slugs.add(coach["slug"])
         index += 1

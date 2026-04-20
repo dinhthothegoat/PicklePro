@@ -146,7 +146,10 @@ async def test_coaches_auto_personalize_from_saved_location(transport):
     assert "Sorted near you." in r.text
     assert "km away" in r.text
     assert "Sarah Johnson" in r.text
+    assert "Michael Lee" in r.text
+    assert "Emma Wilson" in r.text
     assert "0 km away" in r.text
+    assert r.text.index("Sarah Johnson") < r.text.index("Chris Martin 008")
 
 
 @pytest.mark.asyncio
