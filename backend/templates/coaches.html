@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Find a Coach</h2>
+<p>Choose a coach and start a pending session request. No payment or account needed yet.</p>
+
+<!-- Filter form -->
+<form method="get" action="{{ url_for('list_coaches') }}" class="filter-form">
+    <label for="country">Country:</label>
+    <select name="country" id="country">
+        <option value="" {% if not selected_country %}selected{% endif %}>All</option>
+        {% for country in countries %}
+        <option value="{{ country }}" {% if selected_country and selected_country.lower() == country.lower() %}selected{% endif %}>{{ country }}</option>
+        {% endfor %}
+    </select>
+    <label for="location">Location:</label>
+    <select name="location" id="location">
+        <option value="" {% if not selected_location %}selected{% endif %}>All</option>
+        {% for loc in locations %}
+        <option value="{{ loc }}" {% if selected_location and selected_location.lower() == loc.lower() %}selected{% endif %}>{{ loc }}</option>
+        {% endfor %}
+    </select>
+    <label for="specialty">Specialty:</label>
+    <select name="specialty" id="specialty">
+        <option value="" {% if not selected_specialty %}selected{% endif %}>All</option>
+        {% for specialty in specialties %}
+        <option value="{{ specialty }}" {% if selected_specialty and selected_specialty.lower() == specialty.lower() %}selected{% endif %}>{{ specialty }}</option>
+        {% endfor %}
+    </select>
+    <label for="sort">Sort:</label>
+    <select name="sort" id="sort">
+        <option value="" {% if not selected_sort %}selected{% endif %}>Featured</option>
+        <option value="rating" {% if selected_sort == "rating" %}selected{% endif %}>Highest rating</option>
+        <option value="price" {% if selected_sort == "price" %}selected{% endif %}>Lowest price</option>
+    </select>
+    <button type="submit">Apply Filter</button>
+</form>
+
+{% if coaches|length == 0 %}
+    <p>No coaches found for the selected filters.</p>
+{% else %}
+<div class="results-bar">
+    <p>Showing {{ result_start }}-{{ result_end }} of {{ total_coaches }} coaches</p>
+    <p>Page {{ page }} of {{ total_pages }}</p>
+</div>
+
+<div class="listing-grid">
+{% for coach in coaches %}
+    <article class="listing-card">
+        <a class="listing-image" href="{{ url_for('coach_profile', coach_slug=coach.slug) }}">
+            <img src="{{ coach.image_url }}" alt="{{ coach.name }} coaching pickleball">
+        </a>
+        <div class="listing-body">
+            <div class="listing-title">
+                <h3><a href="{{ url_for('coach_profile', coach_slug=coach.slug) }}">{{ coach.name }}</a></h3>
+                <span>{{ coach.rating }}</span>
+            </div>
+            {% if coach.badge %}
+            <p class="coach-badge {{ coach.tier_class }}">{{ coach.badge }}</p>
+            {% endif %}
+            <p>{{ coach.location }}, {{ coach.country }}</p>
+            <p>{{ coach.bio }}</p>
+            <ul class="card-tags">
+            {% for specialty in coach.specialties %}
+                <li>{{ specialty }}</li>
+            {% endfor %}
+            </ul>
+            <p><strong>${{ coach.price }} AUD</strong> per session</p>
+            <div class="action-row compact">
+                <a class="button-link" href="{{ url_for('coach_profile', coach_slug=coach.slug) }}">View profile</a>
+                <a class="button-link primary" href="{{ url_for('book_coach') }}?coach={{ coach.name|urlencode }}">Request session</a>
+            </div>
+        </div>
+    </article>
+{% endfor %}
+</div>
+
+<nav class="pagination" aria-label="Coach results pages">
+    {% if has_previous %}
+    <a class="button-link" href="{{ url_for('list_coaches') }}?{{ previous_page_params|urlencode }}">Previous</a>
+    {% else %}
+    <span class="button-link disabled">Previous</span>
+    {% endif %}
+
+    {% if has_next %}
+    <a class="button-link primary" href="{{ url_for('list_coaches') }}?{{ next_page_params|urlencode }}">Next</a>
+    {% else %}
+    <span class="button-link disabled">Next</span>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

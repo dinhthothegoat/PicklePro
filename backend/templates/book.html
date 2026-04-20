@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set user = current_user(request) %}
+{% if booking %}
+<section class="booking-card">
+    <p class="eyebrow">Pending request</p>
+    <h2>Booking Request Sent</h2>
+    <p>Your request to book a session with <strong>{{ booking.coach }}</strong> has been recorded.</p>
+    <ul>
+        <li>Status: {{ booking.status|title }}</li>
+        <li>Preferred date: {{ booking.preferred_date }}</li>
+        <li>Preferred time: {{ booking.preferred_time }}</li>
+        {% if booking.preferred_slot %}
+        <li>Selected slot: {{ booking.preferred_slot }}</li>
+        {% endif %}
+    </ul>
+    <p>{{ coach.name }} will contact you at {{ booking.email }} to arrange the details.</p>
+    <div class="action-row">
+        <a class="button-link primary" href="{{ url_for('list_coaches') }}">Back to coaches</a>
+        <a class="button-link" href="{{ url_for('home') }}">Home</a>
+    </div>
+</section>
+{% elif coaches %}
+<section class="empty-state">
+    <p class="eyebrow">Choose a coach</p>
+    <h2>Request a Session</h2>
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <p>Pick a coach to open the booking form with their availability.</p>
+    <div class="listing-grid compact-grid">
+        {% for coach in coaches %}
+        <article class="listing-card">
+            <a class="listing-image" href="{{ url_for('coach_profile', coach_slug=coach.slug) }}">
+                <img src="{{ coach.image_url }}" alt="{{ coach.name }} coaching pickleball">
+            </a>
+            <div class="listing-body">
+                <div class="listing-title">
+                    <h3><a href="{{ url_for('coach_profile', coach_slug=coach.slug) }}">{{ coach.name }}</a></h3>
+                    <span>{{ coach.rating }}</span>
+                </div>
+                <p>{{ coach.location }}, {{ coach.country }}</p>
+                <p><strong>${{ coach.price }} AUD</strong> per session</p>
+                <a class="button-link primary" href="{{ url_for('book_coach') }}?coach={{ coach.name|urlencode }}">Book {{ coach.name }}</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    <div class="action-row">
+        <a class="button-link" href="{{ url_for('list_coaches') }}">Browse all coaches</a>
+    </div>
+</section>
+{% elif coach %}
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+<section class="booking-layout">
+    <aside class="coach-summary">
+        <img src="{{ coach.image_url }}" alt="{{ coach.name }} coaching pickleball">
+        <h2>{{ coach.name }}</h2>
+        {% if coach.badge %}
+        <p class="coach-badge {{ coach.tier_class }}">{{ coach.badge }}</p>
+        {% endif %}
+        <p>{{ coach.location }}, {{ coach.country }}</p>
+        <p><strong>${{ coach.price }} AUD</strong> per session</p>
+        <div class="summary-section">
+            <h3>Typical Availability</h3>
+            <ul>
+            {% for slot in coach.availability %}
+                <li>{{ slot }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </aside>
+
+    <form class="booking-form" action="{{ url_for('submit_booking') }}" method="post">
+        <h2>Request a Session</h2>
+        <input type="hidden" name="coach" value="{{ coach.name }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <label>Name
+            <input type="text" name="name" value="{{ user.name if user else '' }}" required>
+        </label>
+
+        <label>Email
+            <input type="email" name="email" value="{{ user.email if user else '' }}" required>
+        </label>
+
+        <label>Preferred date
+            <input type="date" name="preferred_date" required>
+        </label>
+
+        <label>Preferred time
+            <input type="time" name="preferred_time" required>
+        </label>
+
+        <fieldset class="slot-picker">
+            <legend>Select a typical slot</legend>
+            {% for slot in coach.availability %}
+            <label>
+                <input type="radio" name="preferred_slot" value="{{ slot }}">
+                <span>{{ slot }}</span>
+            </label>
+            {% endfor %}
+        </fieldset>
+
+        <label>Message
+            <textarea name="message" rows="4" placeholder="Tell the coach what you want to work on."></textarea>
+        </label>
+
+        <button type="submit">Send Booking Request</button>
+        <a href="{{ url_for('list_coaches') }}">Back to coaches</a>
+    </form>
+</section>
+{% else %}
+<h2>Coach Not Found</h2>
+<p>{{ error }}</p>
+<p><a href="{{ url_for('list_coaches') }}">Back to coaches</a></p>
+{% endif %}
+{% endblock %}

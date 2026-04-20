@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section-heading">
+    <p class="eyebrow">Analysis job</p>
+    <h2>Video Analysis {{ job.status|title }}</h2>
+    <p>Your match is being processed in the background with full-video sampling and shot detection.</p>
+</section>
+
+<section class="job-status-panel">
+    <dl>
+        <dt>Job ID</dt>
+        <dd>{{ job.id }}</dd>
+        <dt>File</dt>
+        <dd>{{ job.filename }}</dd>
+        <dt>Status</dt>
+        <dd><span class="status-pill status-{{ job.status }}">{{ job.status|title }}</span></dd>
+        <dt>Updated</dt>
+        <dd>{{ job.updated_at }}</dd>
+    </dl>
+    {% if job.progress %}
+    <div class="live-progress" data-job-id="{{ job.id }}" data-access-token="{{ job.access_token or '' }}">
+        <div class="progress-heading">
+            <strong data-progress-phase>{{ job.progress.phase or "Queued" }}</strong>
+            <span data-progress-percent>{{ job.progress.percent or 0 }}%</span>
+        </div>
+        <div class="meter" aria-label="Analysis progress">
+            <span data-progress-bar style="width: {{ job.progress.percent or 0 }}%"></span>
+        </div>
+        <p data-progress-message>{{ job.progress.message or "Waiting for analysis worker." }}</p>
+        <p class="model-note">Frames analyzed: <span data-progress-frames>{{ job.progress.frames_analyzed or 0 }}</span></p>
+    </div>
+    {% endif %}
+
+    {% if job.status == "failed" %}
+    <p class="form-error" role="alert">{{ job.error }}</p>
+    <p><a href="{{ url_for('upload_form') }}">Try another video</a></p>
+    {% elif job.status == "complete" %}
+    <p><a class="button-link primary" href="{{ url_for('analysis_job_status', job_id=job.id) }}{% if job.access_token %}?token={{ job.access_token }}{% endif %}">Open report</a></p>
+    {% else %}
+    <p>Keep this page open. The progress bar updates while the match analysis runs.</p>
+    <p><a class="button-link" href="{{ url_for('analysis_job_status', job_id=job.id) }}{% if job.access_token %}?token={{ job.access_token }}{% endif %}">Refresh now</a></p>
+    {% endif %}
+</section>
+{% if job.status in ["queued", "processing"] %}
+<script>
+const progressPanel = document.querySelector("[data-job-id]");
+if (progressPanel) {
+    const jobId = progressPanel.dataset.jobId;
+    const token = progressPanel.dataset.accessToken || new URLSearchParams(window.location.search).get("token") || "";
+    const phase = progressPanel.querySelector("[data-progress-phase]");
+    const percent = progressPanel.querySelector("[data-progress-percent]");
+    const bar = progressPanel.querySelector("[data-progress-bar]");
+    const message = progressPanel.querySelector("[data-progress-message]");
+    const frames = progressPanel.querySelector("[data-progress-frames]");
+
+    async function refreshProgress() {
+        const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
+        const response = await fetch(`/api/analysis/jobs/${jobId}${tokenQuery}`);
+        const data = await response.json();
+        const progress = data.progress || {};
+        const value = progress.percent || 0;
+        phase.textContent = progress.phase || data.status || "Processing";
+        percent.textContent = `${value}%`;
+        bar.style.width = `${value}%`;
+        message.textContent = progress.message || "Processing match video.";
+        frames.textContent = progress.frames_analyzed || 0;
+        if (data.status === "complete" && data.result_url) {
+            window.location.href = data.result_url;
+        }
+        if (data.status === "failed") {
+            window.location.reload();
+        }
+    }
+
+    setInterval(refreshProgress, 2000);
+}
+</script>
+{% endif %}
+{% endblock %}

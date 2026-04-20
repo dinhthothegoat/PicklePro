@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if error %}
+<h2>Coach Not Found</h2>
+<p>{{ error }}</p>
+<p><a href="{{ url_for('list_coaches') }}">Back to coaches</a></p>
+{% else %}
+<section class="profile-hero">
+    <img src="{{ coach.image_url }}" alt="{{ coach.name }} coaching pickleball">
+    <div>
+        <p class="eyebrow">{{ coach.location }}, {{ coach.country }}</p>
+        <h2>{{ coach.name }}</h2>
+        {% if coach.badge %}
+        <p class="coach-badge {{ coach.tier_class }}">{{ coach.badge }}</p>
+        {% endif %}
+        <p>{{ coach.bio }}</p>
+
+        <div class="profile-meta">
+            <span>Rating: {{ coach.rating }}</span>
+            <span>${{ coach.price }} AUD per session</span>
+            <span><a href="mailto:{{ coach.email }}">{{ coach.email }}</a></span>
+        </div>
+
+        <div class="action-row">
+            <a class="button-link primary" href="{{ url_for('book_coach') }}?coach={{ coach.name|urlencode }}">Request session</a>
+            <a class="button-link" href="{{ url_for('list_coaches') }}">Back to coaches</a>
+        </div>
+    </div>
+</section>
+
+<section class="detail-section">
+    <h3>Specialties</h3>
+    <ul class="pill-list">
+    {% for specialty in coach.specialties %}
+        <li>{{ specialty }}</li>
+    {% endfor %}
+    </ul>
+</section>
+
+<section class="detail-section">
+    <h3>Lesson Types</h3>
+    <ul class="pill-list">
+    {% for lesson_type in coach.lesson_types %}
+        <li>{{ lesson_type }}</li>
+    {% endfor %}
+    </ul>
+</section>
+
+<section class="detail-section">
+    <h3>Typical Availability</h3>
+    <ul class="pill-list">
+    {% for slot in coach.availability %}
+        <li>{{ slot }}</li>
+    {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

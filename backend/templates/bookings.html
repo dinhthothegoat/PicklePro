@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section-heading">
+    <p class="eyebrow">Coach portal</p>
+    <h2>Booking Requests</h2>
+    <p>Review incoming session requests from players.</p>
+</section>
+
+{% if bookings %}
+<div class="results-bar">
+    <p>Showing {{ result_start }}-{{ result_end }} of {{ total_bookings }} booking requests</p>
+    <p>Page {{ page }} of {{ total_pages }}</p>
+</div>
+
+<div class="booking-list">
+    {% for booking in bookings %}
+    <article class="booking-card">
+        {% set status = booking.get("status", "pending") %}
+        <p class="status-pill status-{{ status }}">{{ status|title }}</p>
+        <h3>{{ booking.get("coach", "Unknown") }}</h3>
+        <p>{{ booking.get("name", "Unknown") }} wants {{ booking.get("preferred_date", "") }} at {{ booking.get("preferred_time", "") }}.</p>
+        {% if booking.get("preferred_slot") %}
+        <p>Selected slot: {{ booking.get("preferred_slot") }}</p>
+        {% endif %}
+        <p><a href="mailto:{{ booking.get('email', '') }}">{{ booking.get("email", "") }}</a></p>
+        <p>{{ booking.get("message", "") }}</p>
+        {% if status == "pending" %}
+        <div class="booking-actions">
+            <form action="{{ url_for('accept_booking', booking_id=booking.get('id')) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="key_param" value="{{ key_param }}">
+                <button type="submit">Accept</button>
+            </form>
+            <form action="{{ url_for('decline_booking', booking_id=booking.get('id')) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="key_param" value="{{ key_param }}">
+                <button class="secondary-button" type="submit">Decline</button>
+            </form>
+        </div>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+
+<nav class="pagination" aria-label="Booking request pages">
+    {% if has_previous %}
+    <a class="button-link" href="{{ url_for('view_bookings') }}?{{ previous_page_params|urlencode }}">Previous</a>
+    {% else %}
+    <span class="button-link disabled">Previous</span>
+    {% endif %}
+
+    {% if has_next %}
+    <a class="button-link primary" href="{{ url_for('view_bookings') }}?{{ next_page_params|urlencode }}">Next</a>
+    {% else %}
+    <span class="button-link disabled">Next</span>
+    {% endif %}
+</nav>
+{% else %}
+<section class="empty-state">
+    <h3>No booking requests yet.</h3>
+    <p>New requests will appear here after players submit the booking form.</p>
+</section>
+{% endif %}
+{% endblock %}

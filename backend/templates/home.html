@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="market-hero">
+    <div class="hero-copy">
+        {% if personalization %}
+        <p class="eyebrow">{{ personalization.role|title }} dashboard</p>
+        <h2>Welcome back, {{ personalization.first_name }}.</h2>
+        <p>{{ personalization.next_step }}</p>
+        {% else %}
+        <p class="eyebrow">Pickleball coaching stays local</p>
+        <h2>Find the right coach for your next session.</h2>
+        <p>Browse trusted coaches, request a time, and keep every booking in one simple marketplace.</p>
+        {% endif %}
+
+        <form class="hero-search" action="{{ url_for('list_coaches') }}" method="get">
+            <label for="location">Where do you play?</label>
+            <div class="search-row">
+                <input id="location" type="text" name="location" value="{{ personalization.search_location if personalization else '' }}" placeholder="Gold Coast, Sydney, Ho Chi Minh City">
+                <button type="submit">Search coaches</button>
+            </div>
+        </form>
+
+        <div class="action-row">
+            {% if personalization %}
+            <a class="button-link primary" href="{{ url_for(personalization.primary_url) }}">{{ personalization.primary_label }}</a>
+            {% endif %}
+            <a class="button-link primary" href="{{ url_for('list_coaches') }}">Explore coaches</a>
+            {% if personalization %}
+            <a class="button-link light" href="{{ url_for('view_bookings') }}">Booking dashboard</a>
+            {% else %}
+            <a class="button-link light" href="{{ url_for('login_form') }}">Log in</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+{% if personalization %}
+<section class="personal-dashboard" aria-label="Your PickleCoach dashboard">
+    <article>
+        <p class="eyebrow">Your activity</p>
+        <h3>{{ personalization.bookings|length }} recent bookings</h3>
+        <p>{{ personalization.pending_bookings }} pending request{% if personalization.pending_bookings != 1 %}s{% endif %} need attention.</p>
+    </article>
+    <article>
+        <p class="eyebrow">Match analysis</p>
+        <h3>{{ personalization.analyses|length }} recent reports</h3>
+        {% if personalization.latest_focus %}
+        <p>Next focus: {{ personalization.latest_focus|map(attribute="label")|join(", ") }}.</p>
+        {% else %}
+        <p>Your first report will turn match footage into focused training areas.</p>
+        {% endif %}
+    </article>
+    <article>
+        <p class="eyebrow">Next step</p>
+        <h3>{{ personalization.primary_label }}</h3>
+        <p>{{ personalization.next_step }}</p>
+    </article>
+</section>
+
+<section class="personal-lists">
+    <article>
+        <h3>Recent Bookings</h3>
+        {% if personalization.bookings %}
+        <ul>
+            {% for booking in personalization.bookings %}
+            <li>
+                <strong>{{ booking.coach }}</strong>
+                <span>{{ booking.preferred_date }} at {{ booking.preferred_time }} · {{ booking.status|title }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No bookings yet. Start with a coach who matches your training goal.</p>
+        {% endif %}
+    </article>
+    <article>
+        <h3>Recent Match Reports</h3>
+        {% if personalization.analyses %}
+        <ul>
+            {% for analysis in personalization.analyses %}
+            <li>
+                <strong>{{ analysis.details.filename or "Match report" }}</strong>
+                <span>{{ analysis.timestamp }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No match reports yet. Upload a video when you want a personal coaching read.</p>
+        {% endif %}
+    </article>
+</section>
+{% endif %}
+
+<section class="feature-grid" aria-label="Marketplace highlights">
+    <article>
+        <span>01</span>
+        <h3>Search</h3>
+        <p>Filter coaches by location and compare price, focus area, and rating.</p>
+    </article>
+    <article>
+        <span>02</span>
+        <h3>Request</h3>
+        <p>Send a pending booking request with your preferred date and time.</p>
+    </article>
+    <article>
+        <span>03</span>
+        <h3>Improve</h3>
+        <p>Upload match footage when you want simple notes for your next lesson.</p>
+    </article>
+</section>
+
+<section class="section-heading">
+    <h3>How it works</h3>
+    <ol class="steps">
+        <li>Choose a coach near you.</li>
+        <li>Send a pending booking request with your preferred date and time.</li>
+        <li>Upload match footage when you want a simple performance report.</li>
+    </ol>
+</section>
+{% endblock %}

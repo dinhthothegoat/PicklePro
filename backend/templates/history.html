@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Recent Analyses</h2>
+
+{% if records %}
+<div class="results-bar">
+    <p>Showing {{ result_start }}-{{ result_end }} of {{ total_records }} analyses</p>
+    <p>Page {{ page }} of {{ total_pages }}</p>
+</div>
+
+<div class="history-list">
+{% for record in records %}
+    {% set details = record.get("details", {}) %}
+    {% set report = record.get("report", {}) %}
+    <article class="history-card">
+        <h3>{{ details.get("name", "Unknown") }}</h3>
+        <p>{{ record.get("timestamp", "Unknown") }}</p>
+        <p>{{ details.get("location", "Unknown location") }} · {{ details.get("skill_level", "Unknown skill") }} · {{ details.get("match_type", "Match") }}</p>
+        <dl>
+            <dt>Rallies</dt>
+            <dd>{{ report.get("rallies", 0) }}</dd>
+            <dt>Winners</dt>
+            <dd>{{ report.get("winners", 0) }}</dd>
+            <dt>Unforced errors</dt>
+            <dd>{{ report.get("unforced_errors", 0) }}</dd>
+        </dl>
+    </article>
+{% endfor %}
+</div>
+
+<nav class="pagination" aria-label="Analysis history pages">
+    {% if has_previous %}
+    <a class="button-link" href="{{ url_for('view_history') }}?{{ previous_page_params|urlencode }}">Previous</a>
+    {% else %}
+    <span class="button-link disabled">Previous</span>
+    {% endif %}
+
+    {% if has_next %}
+    <a class="button-link primary" href="{{ url_for('view_history') }}?{{ next_page_params|urlencode }}">Next</a>
+    {% else %}
+    <span class="button-link disabled">Next</span>
+    {% endif %}
+</nav>
+{% else %}
+<p>No analyses yet.</p>
+{% endif %}
+
+<p><a href="{{ url_for('home') }}">Back to Home</a></p>
+{% endblock %}

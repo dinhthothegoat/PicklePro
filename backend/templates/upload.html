@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set user = current_user(request) %}
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+<h2>Upload Match Video</h2>
+<p>Please provide your details and match information before uploading your video.  These fields help generate a more relevant report and allow us to connect you with a coach.</p>
+<section class="demo-upload">
+    <p class="eyebrow">Example analysis</p>
+    <h3>YouTube match demo</h3>
+    <p>Run the model stack on the sample match URL.</p>
+    <form action="{{ url_for('analyze_youtube_video') }}" method="post">
+        <label>YouTube URL:<br>
+            <input type="url" name="youtube_url" value="{{ example_youtube_url }}" required>
+        </label>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Analyze YouTube Example</button>
+        <a class="button-link" href="{{ url_for('youtube_example') }}">Open example report</a>
+    </form>
+</section>
+<form action="/upload" method="post" enctype="multipart/form-data">
+    <fieldset>
+        <legend>Player Information</legend>
+        <label>Name:<br>
+            <input type="text" name="name" value="{{ user.name if user else '' }}" required>
+        </label><br>
+        <label>Email:<br>
+            <input type="email" name="email" value="{{ user.email if user else '' }}" required>
+        </label><br>
+        <label>Location:<br>
+            <input type="text" name="location" required>
+        </label><br>
+        <label>Skill level:<br>
+            <select name="skill_level" required>
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+            </select>
+        </label>
+    </fieldset>
+    <fieldset>
+        <legend>Match Details</legend>
+        <label>Match type:<br>
+            <select name="match_type" required>
+                <option value="Singles">Singles</option>
+                <option value="Doubles">Doubles</option>
+            </select>
+        </label><br>
+        <label>Opponent level:<br>
+            <select name="opponent_level" required>
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+            </select>
+        </label><br>
+        <label>Issues noticed (optional):<br>
+            <textarea name="issues" rows="3" placeholder="e.g. missed serves, weak volleys"></textarea>
+        </label>
+    </fieldset>
+    <fieldset>
+        <legend>Upload Video</legend>
+        <label>Select match video (MP4):<br>
+            <input type="file" id="file" name="file" accept="video/mp4" required>
+        </label>
+    </fieldset>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Upload and Analyze</button>
+</form>
+{% endblock %}

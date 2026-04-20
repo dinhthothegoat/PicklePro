@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>PickleCoach&nbsp;AI Prototype</title>
+    <link rel="icon" href="{{ url_for('static', path='/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <h1><a href="{{ url_for('home') }}">PickleCoach</a></h1>
+        {% include "components/navigation.html" %}
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        &copy; {{ year }} PickleCoach&nbsp;AI Prototype
+    </footer>
+</body>
+</html>

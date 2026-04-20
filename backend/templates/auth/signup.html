@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="auth-panel">
+    <p class="eyebrow">Create account</p>
+    <h2>Join PickleCoach</h2>
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <form action="{{ url_for('signup') }}" method="post">
+        <label>Name:<br>
+            <input type="text" name="name" value="{{ name or '' }}" required>
+        </label>
+        <label>Email:<br>
+            <input type="email" name="email" value="{{ email or '' }}" required>
+        </label>
+        <label>Password:<br>
+            <input type="password" name="password" minlength="8" required>
+        </label>
+        <label>Account type:<br>
+            <select name="role" required>
+                <option value="player" {% if role != "coach" %}selected{% endif %}>Player</option>
+                <option value="coach" {% if role == "coach" %}selected{% endif %}>Coach</option>
+            </select>
+        </label>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Create account</button>
+    </form>
+    <p>Already have an account? <a href="{{ url_for('login_form') }}">Log in</a>.</p>
+</section>
+{% endblock %}

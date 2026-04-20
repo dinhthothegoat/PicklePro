@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="error-page">
+    <h2>Access Denied</h2>
+    <p>{{ message or "You do not have access to this page." }}</p>
+    {% if show_admin_key_hint %}
+    <p class="model-note">Admins can also open this page with <code>?key=your-password</code>.</p>
+    {% endif %}
+    <p><a class="button-link primary" href="{{ url_for(action_url or 'home') }}">{{ action_label or "Back to Home" }}</a></p>
+</section>
+{% endblock %}

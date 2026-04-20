@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section-heading">
+    <p class="eyebrow">Platform overview</p>
+    <h2>PickleCoach Stats</h2>
+</section>
+<dl class="stats-list">
+    <dt>Total Matches Analyzed</dt>
+    <dd>{{ total_matches }}</dd>
+    <dt>Total Booking Requests</dt>
+    <dd>{{ total_bookings }}</dd>
+    <dt>Accepted Bookings</dt>
+    <dd>{{ accepted_bookings }}</dd>
+    <dt>Pending Bookings</dt>
+    <dd>{{ pending_bookings }}</dd>
+    <dt>Total Unforced Errors</dt>
+    <dd>{{ total_unforced_errors }}</dd>
+</dl>
+<p><a href="{{ url_for('home') }}">Back to Home</a></p>
+{% endblock %}

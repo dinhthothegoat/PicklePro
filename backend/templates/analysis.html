@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Analysis Report for {{ filename }}</h2>
+<p>Analysis generated at {{ report.analysis_time }}</p>
+{% if report.source_url %}
+<p>Source: <a href="{{ report.source_url }}" rel="noreferrer">{{ report.source_url }}</a></p>
+{% endif %}
+{% if report.youtube %}
+<p>Video: {{ report.youtube.title }}{% if report.youtube.uploader %} by {{ report.youtube.uploader }}{% endif %}</p>
+{% endif %}
+<h3>Player Information</h3>
+<ul>
+    <li>Name: {{ details.name }}</li>
+    <li>Email: {{ details.email }}</li>
+    <li>Location: {{ details.location }}</li>
+    <li>Skill level: {{ details.skill_level }}</li>
+</ul>
+<h3>Match Details</h3>
+<ul>
+    <li>Match type: {{ details.match_type }}</li>
+    <li>Opponent level: {{ details.opponent_level }}</li>
+    <li>Issues reported: {{ details.issues }}</li>
+</ul>
+<ul>
+    <li>Estimated rallies: {{ report.rallies }}</li>
+    <li>Estimated unforced errors: {{ report.unforced_errors }}</li>
+    <li>Estimated winners: {{ report.winners }}</li>
+    <li>Net vs&nbsp;baseline ratio: {{ report.net_ratio }}</li>
+</ul>
+{% if report.metric_disclaimer %}
+<p class="model-note">{{ report.metric_disclaimer }}</p>
+{% endif %}
+{% if report.confidence %}
+<section class="signal-confidence">
+    <div>
+        <p class="eyebrow">Video signal confidence</p>
+        <h3>{{ report.confidence.label|title }} · {{ (report.confidence.score * 100)|round|int }}%</h3>
+        <p>{{ report.confidence.summary }}</p>
+    </div>
+    {% if report.confidence.notes %}
+    <ul>
+        {% for note in report.confidence.notes %}
+        <li>{{ note }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</section>
+{% endif %}
+{% if report.shot_detection %}
+<section class="advanced-report">
+    <p class="eyebrow">Whole-match shot detection</p>
+    <h3>Shot Timeline</h3>
+    <p class="model-note">
+        Detector: {{ report.shot_detection.detector }}.
+        {{ report.shot_detection.model_reference }}
+    </p>
+    {% if report.shot_detection.model_error %}
+    <p class="model-note">{{ report.shot_detection.model_error }}</p>
+    {% endif %}
+    <div class="performance-bands">
+        <article>
+            <div class="band-heading">
+                <span>Tracked Frames</span>
+                <strong>{{ report.shot_detection.coverage.tracked_frames }}</strong>
+            </div>
+            <p>{{ (report.shot_detection.coverage.track_rate * 100)|round|int }}% track rate</p>
+        </article>
+        <article>
+            <div class="band-heading">
+                <span>Shot Events</span>
+                <strong>{{ report.shot_detection.events|length }}</strong>
+            </div>
+            <p>Across {{ report.shot_detection.coverage.duration_seconds }} seconds</p>
+        </article>
+        <article>
+            <div class="band-heading">
+                <span>Sampled Frames</span>
+                <strong>{{ report.shot_detection.coverage.sampled_frames }}</strong>
+            </div>
+            <p>Full-match coverage</p>
+        </article>
+    </div>
+
+    <div class="timeline-list">
+        {% for block in report.shot_detection.rally_windows %}
+        <article>
+            <span>{{ block.start }}s-{{ block.end }}s</span>
+            <h4>{{ block.label }}</h4>
+            <p>{{ block.shots }} detected shots · {{ block.dominant_shot|title }}</p>
+            <p>{{ block.note }}</p>
+        </article>
+        {% endfor %}
+    </div>
+
+    {% if report.shot_detection.events %}
+    <h3>Detected Shot Events</h3>
+    <div class="shot-event-list">
+        {% for event in report.shot_detection.events[:24] %}
+        <article>
+            <strong>{{ event.time }}s</strong>
+            <span>{{ event.type|title }}</span>
+            <p>{{ event.court_zone|title }} · {{ (event.confidence * 100)|round|int }}% confidence</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% endif %}
+</section>
+{% endif %}
+{% if report.advanced %}
+<section class="advanced-report">
+    <p class="eyebrow">Coaching dashboard</p>
+    <h3>Match Momentum</h3>
+    <div class="performance-bands">
+        {% for band in report.advanced.performance_bands %}
+        <article>
+            <div class="band-heading">
+                <span>{{ band.label }}</span>
+                <strong>{{ (band.value * 100)|round|int }}%</strong>
+            </div>
+            <div class="meter" aria-label="{{ band.label }} {{ (band.value * 100)|round|int }}%">
+                <span style="width: {{ (band.value * 100)|round|int }}%"></span>
+            </div>
+            <p>{{ band.status|title }}</p>
+        </article>
+        {% endfor %}
+    </div>
+
+    <h3>Timeline Read</h3>
+    <div class="timeline-list">
+        {% for item in report.advanced.timeline %}
+        <article>
+            <span>{{ item.start_seconds }}s-{{ item.end_seconds }}s</span>
+            <h4>{{ item.label }}</h4>
+            <p>{{ item.summary }}</p>
+            <div class="meter compact-meter">
+                <span style="width: {{ (item.score * 100)|round|int }}%"></span>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    <h3>Rally Blocks</h3>
+    <div class="rally-blocks">
+        {% for segment in report.advanced.rally_segments %}
+        <article>
+            <h4>{{ segment.label }}</h4>
+            <p>{{ segment.start_seconds }}s-{{ segment.end_seconds }}s · {{ segment.rallies }} rallies</p>
+            <dl>
+                <dt>Pressure</dt>
+                <dd>{{ (segment.pressure_score * 100)|round|int }}%</dd>
+                <dt>Consistency</dt>
+                <dd>{{ (segment.consistency_score * 100)|round|int }}%</dd>
+            </dl>
+            <p>{{ segment.note }}</p>
+        </article>
+        {% endfor %}
+    </div>
+
+    <div class="coach-summary-grid">
+        <article>
+            <h4>Strengths</h4>
+            <ul>
+                {% for item in report.advanced.coaching_summary.strengths %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article>
+            <h4>Risks</h4>
+            <ul>
+                {% for item in report.advanced.coaching_summary.risks %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article>
+            <h4>Next Session</h4>
+            <ol>
+                {% for item in report.advanced.coaching_summary.next_session_plan %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ol>
+        </article>
+    </div>
+</section>
+{% endif %}
+{% if report.video_metrics %}
+<h3>Measured Video Signals</h3>
+<ul>
+    {% if report.video_metrics.cv_model %}
+    <li>Vision model: {{ report.video_metrics.cv_model }}</li>
+    {% endif %}
+    <li>Resolution: {{ report.video_metrics.width }}x{{ report.video_metrics.height }}</li>
+    <li>Duration: {{ report.video_metrics.duration_seconds }} seconds</li>
+    <li>Frames sampled: {{ report.video_metrics.sampled_frames }}</li>
+    {% if report.video_metrics.sampling_stride is defined %}
+    <li>Sampling stride: every {{ report.video_metrics.sampling_stride }} frames</li>
+    {% endif %}
+    <li>Average motion: {{ (report.video_metrics.avg_motion * 100)|round|int }}%</li>
+    {% if report.video_metrics.motion_burst_rate is defined %}
+    <li>Motion burst rate: {{ (report.video_metrics.motion_burst_rate * 100)|round|int }}%</li>
+    {% endif %}
+    <li>Court presence: {{ (report.video_metrics.court_presence * 100)|round|int }}%</li>
+    {% if report.video_metrics.visual_confidence is defined %}
+    <li>Visual confidence: {{ (report.video_metrics.visual_confidence * 100)|round|int }}%</li>
+    {% endif %}
+    {% if report.video_metrics.dominant_court_color %}
+    <li>Dominant court color: {{ report.video_metrics.dominant_court_color|title }}</li>
+    {% endif %}
+    {% if report.video_metrics.net_activity_ratio is defined %}
+    <li>Net-zone activity: {{ (report.video_metrics.net_activity_ratio * 100)|round|int }}%</li>
+    <li>Baseline activity: {{ (report.video_metrics.baseline_activity_ratio * 100)|round|int }}%</li>
+    <li>Lateral balance: {{ (report.video_metrics.lateral_balance * 100)|round|int }}%</li>
+    {% endif %}
+</ul>
+{% if report.video_metrics.activity_zones %}
+<div class="signal-grid">
+    {% for label, value in report.video_metrics.activity_zones.items() %}
+    <article>
+        <span>{{ label|replace("_", " ")|title }}</span>
+        <strong>{{ (value * 100)|round|int }}%</strong>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% if report.ml %}
+<section class="ml-panel">
+    <p class="eyebrow">Model output</p>
+    <h3>AI Match Intelligence</h3>
+    {% if report.ml.analysis_source %}
+    <p class="model-note">Analysis source: {{ report.ml.analysis_source }}</p>
+    {% endif %}
+    {% if report.ml.calibration_note %}
+    <p class="model-note">{{ report.ml.calibration_note }}</p>
+    {% endif %}
+    {% if report.ml.vision_learning %}
+    <p class="model-note">
+        Learned CV artifact active:
+        trained on {{ report.ml.vision_learning.training_samples }} matches,
+        {{ (report.ml.vision_learning.confidence * 100)|round|int }}% artifact confidence.
+    </p>
+    {% elif report.ml.vision_learning_error %}
+    <p class="model-note">Learned CV artifact was found but could not be loaded: {{ report.ml.vision_learning_error }}</p>
+    {% else %}
+    <p class="model-note">
+        Learned CV artifact not found yet. Train one with <code>python backend/train_cv_model.py --videos path\to\matches</code>.
+    </p>
+    {% endif %}
+    <div class="ml-grid">
+        <article>
+            <h4>Skill Classifier</h4>
+            <p>{{ report.ml.skill_prediction.label }} with {{ (report.ml.skill_prediction.confidence * 100)|round|int }}% confidence.</p>
+            {% if report.ml.skill_prediction.confidence_note %}
+            <p class="model-note">{{ report.ml.skill_prediction.confidence_note }}</p>
+            {% endif %}
+            {% if report.ml.skill_prediction.raw_label %}
+            <p class="model-note">Raw synthetic model bucket: {{ report.ml.skill_prediction.raw_label }}</p>
+            {% endif %}
+            <ul>
+            {% for label, probability in report.ml.skill_prediction.probabilities.items() %}
+                <li>{{ label }}: {{ (probability * 100)|round|int }}%</li>
+            {% endfor %}
+            </ul>
+        </article>
+        <article>
+            <h4>Play Style Cluster</h4>
+            <p>{{ report.ml.play_style.label }} with {{ (report.ml.play_style.confidence * 100)|round|int }}% fit.</p>
+            {% if report.ml.play_style.confidence_note %}
+            <p class="model-note">{{ report.ml.play_style.confidence_note }}</p>
+            {% endif %}
+            <dl>
+                <dt>Tempo</dt>
+                <dd>{{ (report.ml.features.tempo_score * 100)|round|int }}%</dd>
+                <dt>Consistency</dt>
+                <dd>{{ (report.ml.features.consistency_score * 100)|round|int }}%</dd>
+                <dt>Pressure</dt>
+                <dd>{{ (report.ml.features.pressure_score * 100)|round|int }}%</dd>
+            </dl>
+        </article>
+        <article>
+            <h4>Shot Mix Estimate</h4>
+            <ul>
+            {% for label, share in report.ml.shot_mix.items() %}
+                <li>{{ label }}: {{ (share * 100)|round|int }}%</li>
+            {% endfor %}
+            </ul>
+        </article>
+    </div>
+</section>
+<section class="ml-panel">
+    <h3>Training Focus</h3>
+    <ol class="focus-list">
+    {% for item in report.ml.focus_areas %}
+        <li>{{ item.label }} <span>{{ (item.score * 100)|round|int }}%</span></li>
+    {% endfor %}
+    </ol>
+    <h3>Coach Matches</h3>
+    <div class="coach-match-list">
+    {% for coach in report.ml.coach_matches %}
+        <article>
+            <h4><a href="{{ url_for('coach_profile', coach_slug=coach.slug) }}">{{ coach.name }}</a></h4>
+            <p>{{ coach.location }} · {{ coach.rating }} rating · {{ (coach.match_score * 100)|round|int }}% match</p>
+            {% if coach.matched_specialties %}
+            <p>Best for {{ coach.matched_specialties|join(", ") }}</p>
+            {% endif %}
+        </article>
+    {% endfor %}
+    </div>
+</section>
+{% if report.ml.deep_analysis %}
+<section class="ml-panel deep-analysis-panel">
+    <p class="eyebrow">Real ML Models</p>
+    <h3>Deep Analysis</h3>
+    <div class="ml-grid">
+        <article>
+            <h4>Random Forest</h4>
+            <p>{{ report.ml.deep_analysis.models.random_forest.label }} &mdash;
+               {{ (report.ml.deep_analysis.models.random_forest.confidence * 100)|round|int }}% confidence</p>
+            <ul>
+            {% for lbl, p in report.ml.deep_analysis.models.random_forest.probabilities.items() %}
+                <li>{{ lbl }}: {{ (p * 100)|round|int }}%</li>
+            {% endfor %}
+            </ul>
+        </article>
+        <article>
+            <h4>Support Vector Machine</h4>
+            <p>{{ report.ml.deep_analysis.models.svm.label }} &mdash;
+               {{ (report.ml.deep_analysis.models.svm.confidence * 100)|round|int }}% confidence</p>
+            <ul>
+            {% for lbl, p in report.ml.deep_analysis.models.svm.probabilities.items() %}
+                <li>{{ lbl }}: {{ (p * 100)|round|int }}%</li>
+            {% endfor %}
+            </ul>
+        </article>
+        <article>
+            <h4>Neural Network</h4>
+            <p>{{ report.ml.deep_analysis.models.neural_net.label }} &mdash;
+               {{ (report.ml.deep_analysis.models.neural_net.confidence * 100)|round|int }}% confidence</p>
+            <ul>
+            {% for lbl, p in report.ml.deep_analysis.models.neural_net.probabilities.items() %}
+                <li>{{ lbl }}: {{ (p * 100)|round|int }}%</li>
+            {% endfor %}
+            </ul>
+        </article>
+    </div>
+    <div class="ensemble-result">
+        <h4>Ensemble Decision:
+            <strong>{{ report.ml.deep_analysis.ensemble.label }}</strong>
+            ({{ (report.ml.deep_analysis.ensemble.confidence * 100)|round|int }}% confidence,
+             {{ (report.ml.deep_analysis.ensemble.agreement_pct * 100)|round|int }}% model agreement)
+        </h4>
+        {% if report.ml.deep_analysis.ensemble.raw_label %}
+        <p class="model-note">Raw synthetic ensemble bucket: {{ report.ml.deep_analysis.ensemble.raw_label }}</p>
+        {% endif %}
+    </div>
+    <div class="agreement-chart">
+        <p class="chart-label">Model Agreement</p>
+        {% for model_name, pred in [
+            ("Random Forest", report.ml.deep_analysis.models.random_forest.label),
+            ("SVM",           report.ml.deep_analysis.models.svm.label),
+            ("Neural Net",    report.ml.deep_analysis.models.neural_net.label)
+        ] %}
+        <div class="chart-row">
+            <span class="chart-model">{{ model_name }}</span>
+            <span class="chart-pill {% if pred == report.ml.deep_analysis.ensemble.label %}chart-agree{% else %}chart-disagree{% endif %}">
+                {{ pred }}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+    <p class="segment-note">
+        Player segment: <strong>{{ report.ml.deep_analysis.models.kmeans_segment.label }}</strong>
+        (cluster {{ report.ml.deep_analysis.models.kmeans_segment.segment }})
+    </p>
+</section>
+{% endif %}
+{% endif %}
+<h3>Recommendations</h3>
+<ul>
+{% for rec in report.recommendations %}
+    <li>{{ rec }}</li>
+{% endfor %}
+</ul>
+<p><a href="{{ url_for('upload_form') }}">Analyze another video</a></p>
+{% endblock %}

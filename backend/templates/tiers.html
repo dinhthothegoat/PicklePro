@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section-heading">
+    <p class="eyebrow">Dragon Ball-inspired coach progression</p>
+    <h2>Coach Tiers</h2>
+    <p>Inspired by Dragon Ball power-ups, each tier signals marketplace trust, coaching consistency, and player outcomes.</p>
+</section>
+
+<div class="tier-grid">
+{% for tier in tiers %}
+    <article class="tier-card {{ tier.class_name }}">
+        <p class="coach-badge {{ tier.class_name }}">{{ tier.name }}</p>
+        <h3>{{ tier.summary }}</h3>
+        <h4>Requirements</h4>
+        <p>{{ tier.requirements }}</p>
+        <h4>How to achieve</h4>
+        <p>{{ tier.how_to_achieve }}</p>
+    </article>
+{% endfor %}
+</div>
+{% endblock %}

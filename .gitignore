@@ -1,0 +1,11 @@
+__pycache__/
+.pytest_cache/
+pytest-cache-files-*/
+
+backend/*.sqlite3
+backend/*.sqlite3-*
+backend/test-artifacts/*.sqlite3
+backend/test-artifacts/*.sqlite3-*
+backend/uploads/
+
+external_repos/

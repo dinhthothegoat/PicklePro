@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="auth-panel">
+    <p class="eyebrow">Welcome back</p>
+    <h2>Log In</h2>
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <form action="{{ url_for('login') }}" method="post">
+        <label>Email:<br>
+            <input type="email" name="email" value="{{ email or '' }}" required>
+        </label>
+        <label>Password:<br>
+            <input type="password" name="password" required>
+        </label>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Log in</button>
+    </form>
+    <p>New here? <a href="{{ url_for('signup_form') }}">Create an account</a>.</p>
+</section>
+{% endblock %}

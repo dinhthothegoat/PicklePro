@@ -1,0 +1,8 @@
+{
+  "python.defaultInterpreterPath": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+  "python.analysis.extraPaths": [
+    "C:\\Users\\ADMIN\\DBFZ\\picklecoach-prototype",
+    "C:\\Users\\ADMIN\\DBFZ\\picklecoach-prototype\\backend",
+    "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages"
+  ]
+}
